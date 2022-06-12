@@ -10,3 +10,4 @@ aws-config = "0.13.0"
 aws-sdk-ec2 = "0.13.0"
 tokio = { version = "1", features = ["full"] }
 slack-rust = "0.0.1-alpha"
+curl = "0.4.43"
