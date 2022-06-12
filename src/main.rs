@@ -1,4 +1,5 @@
-use aws_sdk_ec2::{model::InstanceStateName, model::Tag, Client, Error};
+use aws_sdk_ec2::{model::InstanceStateName, Client, Error};
+use chrono::Local;
 use curl::easy::Easy;
 use slack::chat::post_message::{post_message, PostMessageRequest};
 use slack::http_client::default_client;
@@ -6,6 +7,7 @@ use slack_rust as slack;
 use std::env;
 use std::fmt::{Display, Write};
 use std::io::Read;
+use std::time::SystemTime;
 
 // Monitoring Instance
 #[derive(Debug)]
@@ -13,6 +15,7 @@ struct MInstance {
     instance_id: String,
     name: String,
     key_name: String,
+    duration_time: i64,
     state: InstanceStateName,
 }
 
@@ -22,6 +25,7 @@ impl Display for MInstance {
         write!(f, "instance_id: {}\n", self.instance_id);
         write!(f, "Name: {}\n", self.name);
         write!(f, "Key Name: {}\n", self.key_name);
+        write!(f, "Duration Time: {:?}\n", self.duration_time);
         write!(f, "Status: {:?}\n", self.state);
         f.write_char('\n');
         Ok(())
@@ -44,6 +48,9 @@ async fn show_state(client: &Client, ids: Option<Vec<String>>) -> Result<Vec<MIn
                     let instance_id = instance.instance_id().unwrap();
                     println!("Instance ID: {}", instance_id);
                     let key_name = instance.key_name().unwrap();
+                    let launch_time = (Local::now().timestamp()
+                        - instance.launch_time().unwrap().secs())
+                        / (60 * 60 * 24);
 
                     let tags = instance.tags().unwrap();
                     if let Some(name_tag) =
@@ -55,6 +62,7 @@ async fn show_state(client: &Client, ids: Option<Vec<String>>) -> Result<Vec<MIn
                             instance_id: instance_id.to_string(),
                             name: name_value,
                             key_name: key_name.to_string(),
+                            duration_time: launch_time.clone(),
                             state: state.clone(),
                         });
                     } else {
@@ -62,10 +70,12 @@ async fn show_state(client: &Client, ids: Option<Vec<String>>) -> Result<Vec<MIn
                             instance_id: instance_id.to_string(),
                             name: "No-Name".to_string(),
                             key_name: key_name.to_string(),
+                            duration_time: launch_time.clone(),
                             state: state.clone(),
                         });
                     }
                     println!("Key Name: {}", key_name);
+                    println!("Duration Time: {:?}", launch_time.clone());
                     println!("State: {:?}", state);
                     println!();
                 }
