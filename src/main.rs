@@ -12,6 +12,7 @@ use std::io::Read;
 struct MInstance {
     instance_id: String,
     name: String,
+    key_name: String,
     state: InstanceStateName,
 }
 
@@ -20,6 +21,7 @@ impl Display for MInstance {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "instance_id: {}\n", self.instance_id);
         write!(f, "Name: {}\n", self.name);
+        write!(f, "Key Name: {}\n", self.key_name);
         write!(f, "Status: {:?}\n", self.state);
         f.write_char('\n');
         Ok(())
@@ -41,6 +43,7 @@ async fn show_state(client: &Client, ids: Option<Vec<String>>) -> Result<Vec<MIn
                 InstanceStateName::Running => {
                     let instance_id = instance.instance_id().unwrap();
                     println!("Instance ID: {}", instance_id);
+                    let key_name = instance.key_name().unwrap();
 
                     let tags = instance.tags().unwrap();
                     if let Some(name_tag) =
@@ -51,15 +54,18 @@ async fn show_state(client: &Client, ids: Option<Vec<String>>) -> Result<Vec<MIn
                         m_instance.push(MInstance {
                             instance_id: instance_id.to_string(),
                             name: name_value,
+                            key_name: key_name.to_string(),
                             state: state.clone(),
                         });
                     } else {
                         m_instance.push(MInstance {
                             instance_id: instance_id.to_string(),
                             name: "No-Name".to_string(),
+                            key_name: key_name.to_string(),
                             state: state.clone(),
                         });
                     }
+                    println!("Key Name: {}", key_name);
                     println!("State: {:?}", state);
                     println!();
                 }
