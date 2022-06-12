@@ -1,4 +1,4 @@
-use aws_sdk_ec2::{model::InstanceStateName, Client, Error};
+use aws_sdk_ec2::{model::InstanceStateName, model::Tag, Client, Error};
 use curl::easy::Easy;
 use slack::chat::post_message::{post_message, PostMessageRequest};
 use slack::http_client::default_client;
@@ -10,13 +10,17 @@ use std::io::Read;
 // Monitoring Instance
 #[derive(Debug)]
 struct MInstance {
+    instance_id: String,
     name: String,
     state: InstanceStateName,
 }
 
+#[allow(unused_must_use)]
 impl Display for MInstance {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} / {:?}", self.name, self.state);
+        write!(f, "instance_id: {}\n", self.instance_id);
+        write!(f, "Name: {}\n", self.name);
+        write!(f, "Status: {:?}\n", self.state);
         f.write_char('\n');
         Ok(())
     }
@@ -35,20 +39,27 @@ async fn show_state(client: &Client, ids: Option<Vec<String>>) -> Result<Vec<MIn
             let state = instance.state().unwrap().name().unwrap();
             match state {
                 InstanceStateName::Running => {
+                    let instance_id = instance.instance_id().unwrap();
+                    println!("Instance ID: {}", instance_id);
+
                     let tags = instance.tags().unwrap();
-                    for t in tags {
-                        if let Some(name) = t.key() {
-                            if name == "Name" {
-                                let name_value = t.value().unwrap_or_default().to_string();
-                                println!("Name: {:?}", name_value);
-                                m_instance.push(MInstance {
-                                    name: name_value,
-                                    state: state.clone(),
-                                });
-                            }
-                        }
+                    if let Some(name_tag) =
+                        tags.iter().filter(|t| t.key().unwrap() == "Name").next()
+                    {
+                        let name_value = name_tag.value().unwrap().to_string();
+                        println!("Name: {:?}", name_value);
+                        m_instance.push(MInstance {
+                            instance_id: instance_id.to_string(),
+                            name: name_value,
+                            state: state.clone(),
+                        });
+                    } else {
+                        m_instance.push(MInstance {
+                            instance_id: instance_id.to_string(),
+                            name: "No-Name".to_string(),
+                            state: state.clone(),
+                        });
                     }
-                    println!("Instance ID: {}", instance.instance_id().unwrap());
                     println!("State: {:?}", state);
                     println!();
                 }
